@@ -41,3 +41,6 @@ Signals: 3+ wrong in a row on one skill (not counted if answers are getting clos
 - Drag-and-drop works with mouse/touch; tap-to-place also works (tap the label/block, then tap the place).
 - Flags warm-ups (optional) are not included.
 - World map shapes are simplified.
+
+## Hosted link
+https://mtrxdev.github.io/tutor-bot/  (GitHub Pages, repo github.com/mtrxdev/tutor-bot)

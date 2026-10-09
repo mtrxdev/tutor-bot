@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutor</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#f3f0e8;color:#2c3a4a;font-family:"Segoe UI",Arial,Helvetica,sans-serif;-webkit-user-select:none;user-select:none}
+#top{position:fixed;top:0;left:0;right:0;height:96px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#top>*{pointer-events:auto}
+#breakBtn{position:fixed;top:14px;left:14px;width:110px;height:76px;border-radius:18px;border:3px solid #8aa98a;background:#e3eee0;font-size:20px;color:#2c3a4a;display:none}
+#speakBtn{position:fixed;top:14px;right:14px;width:90px;height:76px;border-radius:18px;border:3px solid #7c9cc0;background:#e2eaf3;font-size:34px;display:none}
+#mic{position:fixed;top:30px;right:120px;width:46px;height:46px;border-radius:50%;background:#ddd;display:none;align-items:center;justify-content:center;font-size:24px}
+#mic.on{background:#ffe9a8;box-shadow:0 0 18px 8px #ffd966}
+#steps{display:flex;gap:12px}
+.st{width:58px;height:58px;border-radius:14px;background:#e6e2d8;display:flex;align-items:center;justify-content:center;font-size:28px;border:3px solid transparent;opacity:.7}
+.st.cur{border-color:#e0b64c;background:#fff6d8;opacity:1}
+.st.done{opacity:1}
+#gear{position:fixed;bottom:8px;right:8px;width:34px;height:34px;border-radius:50%;border:none;background:transparent;font-size:20px;opacity:.35;touch-action:none}
+#app{position:absolute;top:100px;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;padding:10px 20px 50px;overflow:auto}
+.qtext{font-size:44px;font-weight:600;text-align:center;margin:8px 0 14px;min-height:56px}
+.sub{font-size:26px;text-align:center;margin:4px 0 10px;color:#46586b}
+.vis{min-height:120px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:20px;margin-bottom:16px;max-width:100%}
+.vis svg{max-width:100%;height:auto}
+.answers{display:flex;flex-wrap:wrap;gap:44px;justify-content:center;margin-top:10px}
+button{font-family:inherit;cursor:pointer}
+.big,.ans{min-width:170px;min-height:110px;padding:10px 26px;font-size:40px;border-radius:24px;border:4px solid #7c9cc0;background:#e2eaf3;color:#2c3a4a}
+.ans svg{display:block}
+.big.go{background:#dcebd9;border-color:#7fa77a}
+.hl{outline:8px solid #f2c14e;outline-offset:4px}
+.ok{font-size:54px;color:#3f7a46;font-weight:700}
+.no{font-size:54px;color:#8a5a2b;font-weight:700}
+.reg{cursor:pointer}
+.reg:hover{stroke:#f2c14e;stroke-width:5}
+.tray{display:flex;gap:30px;flex-wrap:wrap;justify-content:center;margin:10px}
+.drag{min-width:150px;min-height:80px;padding:12px 20px;font-size:30px;border-radius:18px;border:4px dashed #7c9cc0;background:#fff;touch-action:none;display:flex;align-items:center;justify-content:center}
+.drag.sel{outline:8px solid #f2c14e}
+.drag.used{opacity:.45}
+.zone{min-width:260px;min-height:220px;border:4px solid #a9b8c8;border-radius:20px;background:#fbfaf6;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;justify-content:center}
+.zone h3{width:100%;text-align:center;margin:0 0 6px;font-size:26px}
+.rod{width:22px;height:120px;background:repeating-linear-gradient(#6f9fd0 0 11px,#3d6f9f 11px 12px);border:1px solid #3d6f9f}
+.cube{width:22px;height:22px;background:#e0a37a;border:1px solid #9a6440}
+.cells{display:grid;grid-template-columns:repeat(4,110px);gap:10px}
+.cell{width:110px;height:110px;border:3px solid #7c9cc0;background:#fff;border-radius:8px}
+.cell.on{background:#9fc4e8}
+.ghost{position:fixed;pointer-events:none;z-index:99;opacity:.85}
+.choiceRow{display:flex;gap:40px;flex-wrap:wrap;justify-content:center}
+.calm{background:#e4efe6}
+#parent{position:fixed;inset:0;background:#fff;z-index:200;overflow:auto;padding:20px 30px;display:none;font-size:16px}
+#parent h2{margin-top:24px}
+#parent button{font-size:16px;padding:8px 14px;margin:4px;border-radius:8px;border:1px solid #889;background:#eef}
+#parent table{border-collapse:collapse;font-size:14px}#parent td,#parent th{border:1px solid #ccc;padding:4px 6px}
+.map{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:900px;width:100%}
+.node{border:3px solid #bbb;border-radius:14px;padding:8px 12px;margin:6px 0;font-size:22px;background:#fff;display:flex;justify-content:space-between}
+.node.m{border-color:#7fa77a;background:#eef6ec}.node.lock{opacity:.45}.node.new{outline:6px solid #f2c14e}
+</style>
+</head>
+<body>
+<div id="top"><div id="steps"></div></div>
+<button id="breakBtn" data-act="break">🌿 Break</button>
+<div id="mic" title="listening">🎤</div>
+<button id="speakBtn" data-act="repeat" aria-label="Say again">🔊</button>
+<div id="app"></div>
+<button id="gear" aria-label="Parent settings (hold 2 seconds)" title="Parent: hold 2 seconds">⚙</button>
+<div id="parent"></div>
+<script>
+"use strict";
+/* ================= storage ================= */
+const LS='tutorBotData_v1';
+function loadD(){try{return JSON.parse(localStorage.getItem(LS))}catch(e){return null}}
+function freshD(){return{skills:{},rts:[],events:[],sessions:[],settings:{sound:true,mic:true,rate:0.85},dayOffset:0,placementDone:false,sessionCount:0}}
+let D=loadD()||freshD();
+D.settings=Object.assign({sound:true,mic:true,rate:0.85},D.settings||{});
+function save(){try{localStorage.setItem(LS,JSON.stringify(D))}catch(e){}}
+function dstr(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function today(){const d=new Date();d.setDate(d.getDate()+(D.dayOffset||0));return dstr(d)}
+function addDays(s,n){const d=new Date(s+'T12:00:00');d.setDate(d.getDate()+n);return dstr(d)}
+const $=s=>document.querySelector(s);
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ================= skills ================= */
+const SK={
+ add20:{name:'Add within 20',area:'math',pre:[],icon:'➕'},
+ sub20:{name:'Subtract within 20',area:'math',pre:['add20'],icon:'➖'},
+ pv:{name:'Tens and ones',area:'math',pre:['add20'],icon:'🧱'},
+ skip:{name:'Skip count 2, 5, 10',area:'math',pre:['add20'],icon:'🦘'},
+ add100:{name:'Add within 100',area:'math',pre:['pv'],icon:'➕'},
+ sub100:{name:'Subtract within 100',area:'math',pre:['add100','sub20'],icon:'➖'},
+ halves:{name:'Halves of shapes',area:'math',pre:[],icon:'◐'},
+ quarters:{name:'Quarters of shapes',area:'math',pre:['halves'],icon:'◔'},
+ lr:{name:'Left and right',area:'geo',pre:[],icon:'↔️'},
+ compass:{name:'North, south, east, west',area:'geo',pre:['lr'],icon:'🧭'},
+ continents:{name:'Continents',area:'geo',pre:['compass'],icon:'🌍'},
+ oceans:{name:'Oceans',area:'geo',pre:['continents'],icon:'🌊'}
+};
+function sk(id){if(!D.skills[id])D.skills[id]={level:0,days:[],mastered:false,stage:0,due:null,seen:0};return D.skills[id]}
+const preOK=id=>SK[id].pre.every(p=>sk(p).mastered);
+const REVIEW=[1,3,7,30];
+function creditCorrect(id){const s=sk(id),t=today();
+ if(s.mastered){s.stage=Math.min(s.stage+1,REVIEW.length-1);s.due=addDays(t,REVIEW[s.stage]);}
+ if(!s.days.includes(t))s.days.push(t);
+ if(!s.mastered&&s.days.length>=2){s.mastered=true;s.stage=0;s.due=addDays(t,REVIEW[0]);}
+ save();}
+function reviewMiss(id){const s=sk(id);if(s.mastered){s.stage=0;s.due=addDays(today(),1);save();}}
+function median(){const r=D.rts.slice(-30).sort((a,b)=>a-b);if(r.length<3)return 6000;return r[Math.floor(r.length/2)]}
+
+/* ================= visuals ================= */
+function tenFrame(a,b,cross){cross=cross||0;const tot=a+b,fr=Math.max(1,Math.ceil(tot/10));let s=`<svg width="${fr*290}" height="130" viewBox="0 0 ${fr*290} 130">`;
+ for(let f=0;f<fr;f++)for(let r=0;r<2;r++)for(let c=0;c<5;c++){const x=f*290+10+c*54,y=10+r*54,i=f*10+r*5+c;s+=`<rect x="${x}" y="${y}" width="50" height="50" fill="#fff" stroke="#7c9cc0" stroke-width="3"/>`;
+  if(i<tot){s+=`<circle cx="${x+25}" cy="${y+25}" r="17" fill="${i<a?'#4a7fb5':'#d98b5f'}"/>`;if(i>=tot-cross)s+=`<path d="M${x+8} ${y+8}L${x+42} ${y+42}M${x+42} ${y+8}L${x+8} ${y+42}" stroke="#333" stroke-width="5"/>`;}}
+ return s+'</svg>'}
+function numberLine(min,max,o){o=o||{};const W=900,X=v=>40+(v-min)/(max-min)*820;const step=o.tick||(max-min<=20?1:10);let s=`<svg width="${W}" height="150" viewBox="0 0 ${W} 150"><line x1="30" y1="100" x2="870" y2="100" stroke="#2c3a4a" stroke-width="3"/>`;
+ for(let v=min;v<=max;v+=step){s+=`<line x1="${X(v)}" y1="90" x2="${X(v)}" y2="110" stroke="#2c3a4a" stroke-width="2"/>`;if(!o.labels||o.labels.includes(v))s+=`<text x="${X(v)}" y="136" font-size="20" text-anchor="middle">${v}</text>`}
+ (o.jumps||[]).forEach(j=>{const a=X(j[0]),b=X(j[1]);s+=`<path d="M${a} 95 Q${(a+b)/2} ${40} ${b} 95" fill="none" stroke="#d98b5f" stroke-width="4"/>`});
+ (o.dots||[]).forEach(v=>{s+=`<circle cx="${X(v)}" cy="100" r="9" fill="#4a7fb5"/>`});
+ return s+'</svg>'}
+function blocks(n,lab){const t=Math.floor(n/10),o=n%10;let s=`<div style="display:inline-flex;gap:24px;align-items:flex-end;padding:8px;border:2px solid #ddd;border-radius:12px;background:#fff"><div style="text-align:center"><div style="display:flex;gap:6px">${'<div class="rod"></div>'.repeat(t)}</div>${lab?'<div style="font-size:22px">'+t+' tens</div>':''}</div><div style="text-align:center"><div style="display:flex;flex-wrap:wrap;gap:4px;width:${Math.min(5,Math.max(1,o))*26}px">${'<div class="cube"></div>'.repeat(o)}</div>${lab?'<div style="font-size:22px">'+o+' ones</div>':''}</div></div>`;return s}
+function shape(type,parts,equal,sz,colored){sz=sz||160;colored=colored||[];const f=i=>colored.includes(i)?'#9fc4e8':'#fff';let s=`<svg width="${sz}" height="${sz}" viewBox="0 0 100 100">`;
+ if(type==='rect'){if(parts===2){const c=equal?50:30;s+=`<rect x="5" y="20" width="${c-5}" height="60" fill="${f(0)}" stroke="#2c3a4a" stroke-width="3"/><rect x="${c}" y="20" width="${95-c}" height="60" fill="${f(1)}" stroke="#2c3a4a" stroke-width="3"/>`}
+  else{const xs=equal?[5,27.5,50,72.5,95]:[5,15,35,70,95];for(let i=0;i<4;i++)s+=`<rect x="${xs[i]}" y="20" width="${xs[i+1]-xs[i]}" height="60" fill="${f(i)}" stroke="#2c3a4a" stroke-width="3"/>`}}
+ else{ // circle
+  s+=`<circle cx="50" cy="50" r="44" fill="${f(0)}" stroke="#2c3a4a" stroke-width="3"/>`;
+  if(parts===2)s+=equal?`<line x1="50" y1="6" x2="50" y2="94" stroke="#2c3a4a" stroke-width="3"/>`:`<line x1="25" y1="13" x2="25" y2="87" stroke="#2c3a4a" stroke-width="3"/>`;
+  else s+=equal?`<line x1="50" y1="6" x2="50" y2="94" stroke="#2c3a4a" stroke-width="3"/><line x1="6" y1="50" x2="94" y2="50" stroke="#2c3a4a" stroke-width="3"/>`:`<line x1="30" y1="8" x2="30" y2="92" stroke="#2c3a4a" stroke-width="3"/><line x1="6" y1="65" x2="94" y2="65" stroke="#2c3a4a" stroke-width="3"/>`}
+ return s+'</svg>'}
+function scene(items,labels){let s=`<svg width="760" height="200" viewBox="0 0 760 200"><rect x="0" y="150" width="760" height="8" fill="#c9bfa8"/>`;const n=items.length;items.forEach((e,i)=>{const x=n===2?(i?560:200):150+i*230;s+=`<text x="${x}" y="130" font-size="96" text-anchor="middle">${e}</text>`});
+ if(labels)s+=`<text x="20" y="190" font-size="28" fill="#4a7fb5">⬅ Left</text><text x="740" y="190" font-size="28" text-anchor="end" fill="#d98b5f">Right ➡</text>`;return s+'</svg>'}
+const PLACES={school:'🏫',park:'🌳',shop:'🏪',library:'📚'};
+function townMap(places,o){o=o||{};const C=76,N=5;let s=`<svg width="${N*C+180}" height="${N*C+20}" viewBox="0 0 ${N*C+180} ${N*C+20}">`;
+ for(let y=0;y<N;y++)for(let x=0;x<N;x++)s+=`<rect x="${10+x*C}" y="${10+y*C}" width="${C}" height="${C}" fill="#eef3e6" stroke="#b9c7a8" stroke-width="2"/>`;
+ const cell=(x,y)=>[10+x*C+C/2,10+y*C+C/2];
+ const h=cell(2,2);s+=`<text x="${h[0]}" y="${h[1]+18}" font-size="50" text-anchor="middle">🏠</text>`;
+ places.forEach(p=>{const c=cell(p.x,p.y);s+=`<text x="${c[0]}" y="${c[1]+18}" font-size="50" text-anchor="middle">${PLACES[p.name]}</text>`;if(o.names)s+=`<text x="${c[0]}" y="${c[1]+36}" font-size="13" text-anchor="middle">${p.name}</text>`});
+ if(o.arrow){const t=cell(o.arrow[0],o.arrow[1]);s+=`<line x1="${h[0]}" y1="${h[1]}" x2="${t[0]}" y2="${t[1]}" stroke="#e0a030" stroke-width="7" stroke-dasharray="10 8"/>`}
+ const cx=N*C+95,cy=110,big=o.bigRose;s+=`<g font-size="${big?30:24}" font-weight="700" text-anchor="middle"><line x1="${cx}" y1="${cy-55}" x2="${cx}" y2="${cy+55}" stroke="#2c3a4a" stroke-width="3"/><line x1="${cx-55}" y1="${cy}" x2="${cx+55}" y2="${cy}" stroke="#2c3a4a" stroke-width="3"/><text x="${cx}" y="${cy-62}">N</text><text x="${cx}" y="${cy+85}">S</text><text x="${cx+75}" y="${cy+9}">E</text><text x="${cx-75}" y="${cy+9}">W</text></g>`;
+ if(big)s+=`<g font-size="15" text-anchor="middle"><text x="${cx}" y="${cy-92}">North</text><text x="${cx}" y="${cy+105}">South</text></g>`;
+ return s+'</svg>'}
+const CONT={
+ 'North America':{d:'M80,60 L330,50 L300,150 L250,230 L200,250 L130,170 L60,110Z',c:[200,130]},
+ 'South America':{d:'M240,260 L320,270 L340,330 L290,450 L260,440 L240,330Z',c:[285,340]},
+ 'Europe':{d:'M450,60 L560,60 L560,130 L470,150 L440,110Z',c:[500,100]},
+ 'Africa':{d:'M450,170 L580,170 L610,250 L560,380 L520,390 L480,280 L430,230Z',c:[525,260]},
+ 'Asia':{d:'M570,50 L900,60 L880,200 L780,260 L700,230 L620,180 L570,140Z',c:[730,140]},
+ 'Australia':{d:'M790,320 L900,310 L920,380 L820,400Z',c:[855,360]},
+ 'Antarctica':{d:'M150,470 L850,470 L850,498 L150,498Z',c:[500,488]}};
+const OCEANS={
+ 'Pacific':{r:[[0,45,240,385],[900,45,100,385]],c:[110,300]},
+ 'Atlantic':{r:[[240,45,200,385]],c:[380,200]},
+ 'Indian':{r:[[600,260,190,170]],c:[680,330]},
+ 'Arctic':{r:[[0,0,1000,45]],c:[500,30]},
+ 'Southern':{r:[[0,430,1000,40]],c:[500,456]}};
+function world(o){o=o||{};let s=`<svg width="900" height="450" viewBox="0 0 1000 500" style="background:#cfe3f0;border-radius:12px">`;
+ for(const k in OCEANS){OCEANS[k].r.forEach(r=>{s+=`<rect x="${r[0]}" y="${r[1]}" width="${r[2]}" height="${r[3]}" fill="${o.oceans?'#bcd8ec':'#cfe3f0'}" stroke="${o.oceans?'#9cc2de':'none'}" ${o.tap==='oceans'?`class="reg" data-v="${k}"`:''}/>`})}
+ for(const k in CONT){s+=`<path d="${CONT[k].d}" fill="#d9cfa6" stroke="#8a7a4a" stroke-width="3" ${o.tap==='cont'?`class="reg" data-v="${k}"`:''} ${o.drop?`class="drop" data-zone="${k}"`:''}/>`}
+ const lab=(set,k,big)=>{const c=set[k].c;let t=o.labels==='full'?k:o.labels==='initial'?k[0]:'';if(!t)return '';const bold=o.boldOf===k;s+=`<text x="${c[0]}" y="${c[1]+10}" font-size="${bold?44:30}" font-weight="700" text-anchor="middle" fill="${bold?'#b5651d':'#3a3a3a'}" pointer-events="none">${t}</text>`};
+ if(o.labelSet!=='oceans')for(const k in CONT)lab(CONT,k);
+ if(o.labelSet==='oceans'||o.labelSet==='both')for(const k in OCEANS)if(!o.oceanList||o.oceanList.includes(k))lab(OCEANS,k);
+ if(o.placed)for(const k in o.placed){const c=CONT[o.placed[k]].c;s+=`<text x="${c[0]}" y="${c[1]+40}" font-size="28" text-anchor="middle" fill="#1d4e89" font-weight="700" pointer-events="none">${k}</text>`}
+ return s+'</svg>'}
+
+/* ================= question generators ================= */
+function numChoices(ans,n,extra){const set=new Set([ans]);const cand=shuffle((extra||[]).concat([ans+1,ans-1,ans+2,ans-2,ans+10,ans-10])).filter(v=>v>=0&&v!==ans);
+ const pref=(extra||[]).filter(v=>v>=0&&v!==ans);for(const v of pref.concat(cand)){if(set.size>=n)break;set.add(v)}
+ return [...set].sort((a,b)=>a-b).map(v=>({v:String(v),label:String(v)}))}
+const GEN={
+ add20(L,h){let a,b,s,ans,text,vis='',tip;
+  if(L<2){if(L===0){a=rnd(1,8);b=rnd(1,10-a)}else{a=rnd(5,9);b=rnd(Math.max(2,11-a),9)}s=a+b;ans=s;text=`${a} + ${b} = ?`;tip=L===0?'Count all the dots.':`Make 10 first.`;if(L===0||h)vis=tenFrame(a,b);}
+  else{a=rnd(4,9);s=rnd(Math.max(a+2,11),18);b=s-a;ans=b;text=`${a} + ? = ${s}`;tip=`Count up from ${a}.`;if(h)vis=tenFrame(a,0)+`<div class="sub">Count up to ${s}.</div>`;}
+  const say=h&&L===1?`${text.replace('?','what')}. First make 10. ${a} and ${10-a} make 10.`:text.replace('?','what').replace('+','plus');
+  return{text,say,vis,kind:'choice',choices:numChoices(ans,L===2?4:3),answer:String(ans),num:ans,explain:`${a} + ${b} = ${s}.`,tip}},
+ sub20(L,h){let a,b,ans,text,vis='',tip,c;
+  if(L===0){a=rnd(3,10);b=rnd(1,a-1)}else{a=rnd(11,18);b=rnd(a-9,9);if(b<=a%10)b=Math.min(9,a%10+1);if(a-b>9)b=a-9}
+  c=a-b;if(L<2){ans=c;text=`${a} - ${b} = ?`;tip=L===0?'Cross out and count.':'Take away to get to 10 first.';if(L===0||h)vis=tenFrame(a,0,b)}
+  else{ans=b;text=`${a} - ? = ${c}`;tip=`Count back from ${a} to ${c}.`;if(h)vis=numberLine(0,20,{dots:[a,c]})}
+  return{text,say:text.replace('?','what').replace('-','minus'),vis,kind:'choice',choices:numChoices(ans,L===2?4:3),answer:String(ans),num:ans,explain:`${a} - ${b} = ${c}.`,tip}},
+ pv(L,h){const n=rnd(L===2?12:11,L===2?59:99),t=Math.floor(n/10),o=n%10;
+  if(L===0)return{text:'How many tens?',say:'How many tens? A stick is 10.',vis:blocks(n,h),kind:'choice',choices:numChoices(t,3,[o]),answer:String(t),num:t,explain:`${t} tens and ${o} ones.`,tip:'Count the sticks.'};
+  if(L===1){const sw=o*10+t;return{text:'What number is this?',vis:blocks(n,h),kind:'choice',choices:numChoices(n,3,[sw!==n&&o>0?sw:n+10]),answer:String(n),num:n,explain:`${t} tens and ${o} ones is ${n}.`,tip:'Count the tens. Then the ones.'}}
+  return{text:`Make ${n}.`,say:`Make ${n}. Put sticks in tens. Put cubes in ones. Then tap Done.`,vis:h?`<div class="sub">${n} is ${t} tens and ${o} ones.</div>`:'',kind:'pv',target:n,st:{tens:0,ones:0},answer:String(n),num:n,explain:`${n} is ${t} tens and ${o} ones.`,tip:'Look at the ones.'}},
+ add100(L,h){let a,b;
+  if(L===0){a=10*rnd(1,5);b=10*rnd(1,4)}else if(L===1){const ao=rnd(1,5),bo=rnd(1,9-ao);a=rnd(1,5)*10+ao;b=rnd(1,3)*10+bo}else{const ao=rnd(3,9),bo=rnd(10-ao,9);a=rnd(1,5)*10+ao;b=rnd(1,3)*10+bo}
+  const s=a+b,text=`${a} + ${b} = ?`;const tens=Math.floor(a/10)*10+Math.floor(b/10)*10;
+  return{text,say:h?`${a} plus ${b}. First add the tens. ${Math.floor(a/10)*10} plus ${Math.floor(b/10)*10} is ${tens}. Now add the ones.`:`${a} plus ${b} is what?`,vis:(L===0||h)?blocks(a,h)+'<span style="font-size:50px">+</span>'+blocks(b,h):'',kind:'choice',choices:numChoices(s,L===2?4:3,[s-10]),answer:String(s),num:s,explain:`${a} + ${b} = ${s}.`,tip:'Add the tens. Then add the ones.'}},
+ sub100(L,h){let a,b;
+  if(L===0){a=10*rnd(3,9);b=10*rnd(1,a/10-1)}else if(L===1){const ao=rnd(3,9),bo=rnd(1,ao);a=rnd(3,9)*10+ao;b=rnd(1,Math.floor(a/10)-1)*10+bo}else{const ao=rnd(0,7),bo=rnd(ao+1,9);a=rnd(3,9)*10+ao;b=rnd(1,Math.floor(a/10)-2)*10+bo}
+  const c=a-b,text=`${a} - ${b} = ?`;
+  return{text,say:h?`${a} minus ${b}. First take away the tens. Then take away the ones.`:`${a} minus ${b} is what?`,vis:(L===0||h)?blocks(a,h):'',kind:'choice',choices:numChoices(c,L===2?4:3,[c+10]),answer:String(c),num:c,explain:`${a} - ${b} = ${c}.`,tip:'Look at the ones.'}},
+ skip(L,h){const st=[10,5,2][L],start=st*rnd(0,3),seq=[0,1,2,3,4].map(i=>start+i*st),bi=L===0?4:rnd(1,4),ans=seq[bi];
+  const text=seq.map((v,i)=>i===bi?'?':v).join(', ');const max=seq[4]+st;
+  return{text,say:`Count by ${st}. ${seq.map((v,i)=>i===bi?'what':v).join(', ')}.`,vis:(L===0||h)?numberLine(0,Math.max(max,20),{tick:st,labels:seq.filter((v,i)=>i!==bi),jumps:seq.slice(0,4).map(v=>[v,v+st])}):'',kind:'choice',choices:numChoices(ans,3,[ans+1,ans-1,ans+st]),answer:String(ans),num:ans,explain:`${seq.join(', ')}. Jump by ${st}.`,tip:`Each jump is ${st}.`}},
+ halves(L,h){return partsQ(2,L,h)},quarters(L,h){return partsQ(4,L,h)},
+ lr(L,h){const items=shuffle(['🍎','⚽','⭐','🐱','🌳','🚗']);const nm={'🍎':'apple','⚽':'ball','⭐':'star','🐱':'cat','🌳':'tree','🚗':'car'};
+  if(L===0){const two=items.slice(0,2),t=rnd(0,1);return{text:`Where is the ${nm[two[t]]}?`,vis:scene(two,true),kind:'choice',choices:[{v:'Left',label:'⬅ Left'},{v:'Right',label:'Right ➡'}],answer:t?'Right':'Left',explain:`The ${nm[two[t]]} is on the ${t?'right':'left'}.`,tip:'Left is this side ⬅.'}}
+  const three=items.slice(0,3),dir=L===1?'left':pick(['left','right']),ref=dir==='left'?rnd(1,2):rnd(0,1),ans=three[dir==='left'?ref-1:ref+1];
+  return{text:`What is ${dir} of the ${nm[three[ref]]}?`,vis:scene(three,h),kind:'choice',choices:three.filter(e=>e!==three[ref]).map(e=>({v:nm[e],label:e+' '+nm[e]})),answer:nm[ans],explain:`The ${nm[ans]} is ${dir} of the ${nm[three[ref]]}.`,tip:dir==='left'?'Left is this side ⬅.':'Right is this side ➡.'}},
+ compass(L,h){const DIRS={North:[0,-1],East:[1,0],South:[0,1],West:[-1,0]},dn=Object.keys(DIRS);
+  if(L===0){const d=pick(dn),k=rnd(1,2),p=pick(Object.keys(PLACES));const pl=[{name:p,x:2+DIRS[d][0]*k,y:2+DIRS[d][1]*k}];
+   return{text:`Where is the ${p}?`,say:`Which way is the ${p} from the house?`,vis:townMap(pl,{names:true,arrow:h?[pl[0].x,pl[0].y]:null,bigRose:h}),kind:'choice',choices:dn.map(x=>({v:x,label:x})),answer:d,explain:`The ${p} is ${d.toLowerCase()} of the house.`,tip:'North is up. East is right.'}}
+  if(L===1){const ps=shuffle(Object.keys(PLACES)),pl=dn.map((d,i)=>({name:ps[i],x:2+DIRS[d][0],y:2+DIRS[d][1]})),i=rnd(0,3);
+   return{text:`What is ${dn[i].toLowerCase()} of the house?`,vis:townMap(pl,{names:true,bigRose:h,arrow:h?[pl[i].x,pl[i].y]:null}),kind:'choice',choices:pl.map(p=>({v:p.name,label:PLACES[p.name]+' '+p.name})),answer:ps[i],explain:`The ${ps[i]} is ${dn[i].toLowerCase()} of the house.`,tip:'Use the N, S, E, W.'}}
+  const ps=shuffle(Object.keys(PLACES)).slice(0,3),ds=shuffle(dn).slice(0,3),pl=ps.map((p,i)=>({name:p,x:2+DIRS[ds[i]][0]*2,y:2+DIRS[ds[i]][1]*2})),i=rnd(0,2);
+  return{text:`Go 2 ${ds[i].toLowerCase()}. Where are you?`,say:`Start at the house. Go 2 squares ${ds[i].toLowerCase()}. Where are you?`,vis:townMap(pl,{names:true,bigRose:h,arrow:h?[pl[i].x,pl[i].y]:null}),kind:'choice',choices:pl.map(p=>({v:p.name,label:PLACES[p.name]+' '+p.name})),answer:ps[i],explain:`2 squares ${ds[i].toLowerCase()} is the ${ps[i]}.`,tip:'Count the squares.'}},
+ continents(L,h){const names=Object.keys(CONT);
+  if(L<2){const t=pick(names);return{text:`Tap ${t}.`,vis:world({tap:'cont',labels:L===0||h?'initial':'',boldOf:h?t:null}),kind:'map',voice:names,answer:t,explain:`This is ${t}.`,tip:`${t} starts with ${t[0]}.`}}
+  const two=shuffle(names.filter(n=>n!=='Antarctica')).slice(0,2);
+  return{text:'Put the names on the map.',say:'Drag each name to its continent. Then tap Done.',kind:'drag',items:two,st:{placed:{}},answer:two.join(','),explain:`${two[0]} and ${two[1]}.`,tip:'Look at the shapes.',hintBold:h?two[0]:null}},
+ oceans(L,h){const list=L===0?['Pacific','Atlantic']:L===1?['Pacific','Atlantic','Indian','Arctic']:Object.keys(OCEANS);const t=pick(list);
+  return{text:`Tap the ${t} Ocean.`,vis:world({tap:'oceans',oceans:true,labels:(L<2||h)?'initial':'',labelSet:'oceans',oceanList:list,boldOf:h?t:null}),kind:'map',voice:Object.keys(OCEANS),answer:t,explain:`This is the ${t} Ocean.`,tip:`${t} starts with ${t[0]}.`}}
+};
+function partsQ(p,L,h){const word=p===2?'halves':'quarters',one=p===2?'half':'quarter';
+ if(L===0){const eq=Math.random()<.5,ty=pick(['rect','circle']);return{text:`Is this cut in ${word}?`,vis:shape(ty,p,eq,220),kind:'choice',choices:[{v:'Yes',label:'Yes'},{v:'No',label:'No'}],answer:eq?'Yes':'No',explain:eq?`Yes. ${p} same parts.`:`No. The parts are not the same.`,tip:`${word[0].toUpperCase()+word.slice(1)} are ${p} same parts.`}}
+ if(L===1){const ty=pick(['rect','circle']),other=p===2?4:2;const opts=shuffle([{v:'a',s:shape(ty,p,true,140)},{v:'b',s:shape(ty,p,false,140)},{v:'c',s:shape(ty==='rect'?'circle':'rect',other,true,140)}]);
+  return{text:`Tap the ${word}.`,say:`Tap the shape cut in ${word}.`,vis:h?`<div class="sub">${p} same parts.</div>`:'',kind:'choice',choices:opts.map(o=>({v:o.v,label:o.s})),answer:'a',explain:`${p} same parts are ${word}.`,tip:`Look for ${p} same parts.`}}
+ const n=8,t=n/p;return{text:`Color ${p===2?'half':'one quarter'}.`,say:`Tap squares to color ${p===2?'half':'one quarter'} of them. Then tap Done.`,vis:h?`<div class="sub">${n} squares. ${p} same groups. Color ${t}.</div>`:'',kind:'grid',n,target:t,st:{on:[]},answer:String(t),num:t,explain:`${one[0].toUpperCase()+one.slice(1)} of 8 is ${t}.`,tip:`Make ${p} same groups.`}}
+const INTRO={
+ add20:()=>({vis:tenFrame(8,5),lines:['This is a ten-frame.','It is a grid. It holds 10.','8 blue. 5 orange.','2 orange fill the frame.','10 and 3 make 13.','8 + 5 = 13.']}),
+ sub20:()=>({vis:tenFrame(13,0,5),lines:['Here are 13 dots.','We take away 5.','We cross out 5.','8 dots are left.','13 - 5 = 8.']}),
+ pv:()=>({vis:blocks(34,true),lines:['A stick is 10.','A cube is 1.','3 sticks and 4 cubes.','3 tens and 4 ones.','That is 34.']}),
+ skip:()=>({vis:numberLine(0,25,{tick:5,jumps:[[0,5],[5,10],[10,15],[15,20]]}),lines:['We jump by 5.','0, 5, 10, 15, 20.','Each jump is the same.']}),
+ add100:()=>({vis:blocks(32,true)+'<span style="font-size:50px">+</span>'+blocks(25,true),lines:['Add the tens.','30 + 20 = 50.','Add the ones.','2 + 5 = 7.','50 and 7 make 57.']}),
+ sub100:()=>({vis:blocks(57,true),lines:['Here is 57.','Take away 23.','Tens: 50 - 20 = 30.','Ones: 7 - 3 = 4.','57 - 23 = 34.']}),
+ halves:()=>({vis:shape('rect',2,true,200)+shape('circle',2,true,200),lines:['These shapes have 2 parts.','The parts are the same.','Each part is one half.']}),
+ quarters:()=>({vis:shape('rect',4,true,200)+shape('circle',4,true,200),lines:['These shapes have 4 parts.','The parts are the same.','Each part is one quarter.']}),
+ lr:()=>({vis:scene(['🍎','⚽'],true),lines:['This side is left.','This side is right.','The apple is on the left.','The ball is on the right.']}),
+ compass:()=>({vis:townMap([{name:'school',x:2,y:0}],{names:true,bigRose:true,arrow:[2,0]}),lines:['This is a map.','North is up. South is down.','East is right. West is left.','The school is north of the house.']}),
+ continents:()=>({vis:world({labels:'full'}),lines:['This is the world.','Big land parts are continents.','There are 7 continents.','Africa is in the middle.']}),
+ oceans:()=>({vis:world({oceans:true,labels:'full',labelSet:'oceans'}),lines:['Oceans are big water.','The Pacific is the biggest.','The Atlantic is next to Africa.','There are 5 oceans.']})
+};
+function genQ(id,L,h,avoid){let q;for(let i=0;i<25;i++){q=GEN[id](L,h);q.key=id+'|'+q.text+'|'+q.answer;if(!avoid||!avoid.has(q.key))break}
+ q.skill=id;q.level=L;q.hint=!!h;q.say=q.say||q.text;return q}
+
+/* ================= speech ================= */
+let voice=null;
+function pickVoice(){if(!window.speechSynthesis)return;const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));const pref=['Google US English','Samantha','Microsoft Aria','Microsoft Jenny','Microsoft Zira','Karen','Daniel','Google UK English Female'];
+ for(const p of pref){const v=vs.find(v=>v.name.indexOf(p)===0);if(v){voice=v;return}}voice=vs.find(v=>/en-US/i.test(v.lang))||vs[0]||null}
+if(window.speechSynthesis){pickVoice();try{speechSynthesis.onvoiceschanged=pickVoice}catch(e){}}
+let speakTok=0;
+function speak(text){return new Promise(res=>{const tok=++speakTok;stopListen();if(!window.speechSynthesis||!D.settings.sound||!text){res();return}
+ try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text.replace(/ - /g,' minus ').replace(/ \+ /g,' plus ').replace(/\?/g,'what'));if(voice)u.voice=voice;u.lang=voice?voice.lang:'en-US';u.rate=D.settings.rate;u.pitch=1;
+  let done=false;const fin=()=>{if(done)return;done=true;res()};u.onend=fin;u.onerror=fin;setTimeout(fin,1500+text.length*110/D.settings.rate);speechSynthesis.speak(u)}catch(e){res()}})}
+async function speakLines(arr){for(const t of arr)await speak(t)}
+let actx=null;
+function tone(ok){if(!D.settings.sound)return;try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=ok?660:440;g.gain.setValueAtTime(0.0001,actx.currentTime);g.gain.exponentialRampToValueAtTime(0.06,actx.currentTime+0.05);g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.5);o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+0.55)}catch(e){}}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,micDenied=false,wantListen=false;
+function micUsable(){return !!SR&&D.settings.mic&&!micDenied}
+function startListen(){if(!micUsable())return;wantListen=true;if(rec)return;try{rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.maxAlternatives=3;rec.continuous=false;
+ rec.onstart=()=>$('#mic').classList.add('on');
+ rec.onresult=e=>{const r=e.results[e.results.length-1];const alts=[];for(let i=0;i<r.length;i++)alts.push({t:r[i].transcript,c:r[i].confidence});onSpeech(alts)};
+ rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){micDenied=true;wantListen=false;$('#mic').style.display='none'}};
+ rec.onend=()=>{rec=null;$('#mic').classList.remove('on');if(wantListen&&micUsable())setTimeout(()=>{if(wantListen)startListen()},350)};
+ rec.start()}catch(e){rec=null}}
+function stopListen(){wantListen=false;if(rec){try{rec.abort()}catch(e){}rec=null}$('#mic').classList.remove('on')}
+const NUMW={zero:0,oh:0,one:1,won:1,two:2,to:2,too:2,three:3,four:4,for:4,five:5,six:6,seven:7,eight:8,ate:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90,hundred:100};
+function parseNums(t){const out=[];t.replace(/\d+/g,m=>{out.push(+m);return m});const w=t.toLowerCase().replace(/-/g,' ').split(/\s+/);for(let i=0;i<w.length;i++){if(w[i] in NUMW){let v=NUMW[w[i]];if(v>=20&&v<100&&w[i+1] in NUMW&&NUMW[w[i+1]]<10&&NUMW[w[i+1]]>0){v+=NUMW[w[i+1]];i++}out.push(v)}}return out}
+const STOPW=/\b(stop|i'?m done|i am done|don'?t want|do not want|how many more|no more|quit|finished|boring|tired)\b/i;
+
+/* ================= session state ================= */
+let S=null;
+const STEPS=[['👀','Preview'],['🔆','Warm-up'],['💡','New idea'],['✏️','Practice'],['✅','Check']];
+function setSteps(i){const el=$('#steps');if(i<0){el.innerHTML='';return}el.innerHTML=STEPS.map((s,k)=>`<div class="st ${k===i?'cur':k<i?'done':''}" title="${s[1]}">${s[0]}</div>`).join('')}
+function chrome(on){$('#breakBtn').style.display=on?'block':'none';$('#speakBtn').style.display=on?'block':'none';$('#mic').style.display=on&&micUsable()?'flex':'none'}
+const app=()=>$('#app');
+
+function home(){S=null;stopListen();setSteps(-1);chrome(false);
+ app().innerHTML=`<div style="height:8vh"></div><div class="qtext">Hello.</div><div class="sub">Tap Start.</div><div class="answers"><button class="big go" data-act="start" style="min-width:300px;min-height:160px;font-size:56px">Start</button></div>`}
+function chooseWarm(){const t=today(),ids=Object.keys(SK);let due=ids.filter(id=>sk(id).mastered&&sk(id).due&&sk(id).due<=t).sort((a,b)=>sk(a).due<sk(b).due?-1:1);
+ let pool=due.slice(0,2);const mastered=shuffle(ids.filter(id=>sk(id).mastered&&!pool.includes(id)));while(pool.length<2&&mastered.length)pool.push(mastered.pop());
+ const strengths=shuffle(['lr','compass','add20','halves','continents'].filter(id=>preOK(id)&&!pool.includes(id)));while(pool.length<2&&strengths.length)pool.push(strengths.pop());
+ return pool.map(id=>({id,review:sk(id).mastered}))}
+function chooseNew(){const ids=Object.keys(SK).filter(id=>!sk(id).mastered&&preOK(id));if(!ids.length)return pick(Object.keys(SK));
+ const prog=ids.filter(id=>sk(id).days.length>0||sk(id).seen>0);if(prog.length)return prog[0];
+ const area=D.sessionCount%2?'geo':'math';return ids.find(id=>SK[id].area===area)||ids[0]}
+function newSession(){D.sessionCount++;save();
+ S={phase:'preview',n:0,start:Date.now(),warm:chooseWarm(),newSkill:chooseNew(),keys:new Set(),hint:false,fastRun:0,wrongRun:{},lastDist:{},sigs:[],frust:0,offTaps:[],recover:null,detour:null,starred:false,correct:0,total:0,skipAhead:false};
+ sk(S.newSkill);chrome(true);setSteps(0);
+ app().innerHTML=`<div class="qtext">Today: 5 steps.</div><div class="vis" style="gap:30px">${STEPS.map(s=>`<div style="text-align:center;font-size:24px"><div class="st" style="width:110px;height:110px;font-size:56px;opacity:1">${s[0]}</div>${s[1]}</div>`).join('')}</div><div class="answers"><button class="big go" data-act="next">Next ➡</button></div>`;
+ S.lastSay='Today we do 5 steps. Warm-up. New idea. Practice. Check. Then we finish.';speak(S.lastSay)}
+function minute(){return S?Math.floor((Date.now()-S.start)/60000):0}
+
+function advance(){// called after feedback/screens
+ if(!S)return;
+ if(S.detour){S.detour=null;return showQ(makeQ())}
+ if(S.phase==='preview'){S.phase='warm';S.n=0;return showQ(makeQ())}
+ if(S.phase==='warm'){S.n++;if(S.n<S.warm.length)return showQ(makeQ());S.phase='intro';S.n=0;return intro()}
+ if(S.phase==='intro'){S.n++;if(S.n<S.introLines.length)return introLine();S.phase='practice';S.n=0;S.skipAhead=false;return showQ(makeQ())}
+ if(S.phase==='practice'){S.n++;if(S.n<4&&!(S.n>=3&&S.skipAhead))return showQ(makeQ());S.phase='check';S.n=0;S.hint=false;return showQ(makeQ())}
+ if(S.phase==='check'){S.n++;const mins=(Date.now()-S.start)/60000;if(S.n<2&&mins<10)return showQ(makeQ());return finish(false)}
+}
+function makeQ(){let id,L,h=false;
+ if(S.detour){id=S.detour;L=Math.min(sk(id).level,1)}
+ else if(S.phase==='warm'){id=S.warm[S.n].id;L=sk(id).mastered?sk(id).level:0}
+ else{id=S.newSkill;L=sk(id).level;h=S.phase==='practice'&&S.hint}
+ const q=genQ(id,L,h,S.keys);S.keys.add(q.key);return q}
+function phaseIdx(){return {preview:0,warm:1,intro:2,practice:3,check:4}[S.phase]}
+
+/* ---------- intro ---------- */
+function intro(){const id=S.newSkill;const it=INTRO[id]();S.introVis=it.vis;S.introLines=it.lines;sk(id).seen++;save();setSteps(2);introLine()}
+function introLine(){S.mode='intro';S.q=null;const line=S.introLines[S.n];
+ app().innerHTML=`<div class="qtext">${esc(line)}</div><div class="vis">${S.introVis}</div><div class="answers"><button class="big go" data-act="next">Next ➡</button></div>`;S.lastSay=(S.n===0?'New idea. '+SK[S.newSkill].name+'. ':'')+line;speak(S.lastSay)}
+
+/* ---------- questions ---------- */
+function showQ(q){S.q=q;S.mode='question';S.locked=false;S.pend=null;S.which=null;S.offTopicCounted=false;S.paused=0;S.selItem=null;setSteps(S.detour?1:phaseIdx());renderQ();askQ()}
+async function askQ(){S.qStart=Date.now();S.lastSay=S.q.say;const q=S.q;await speak(q.say);if(S&&S.q===q&&!S.locked){S.qStart=Date.now();startListen();watchPause()}}
+function watchPause(){clearInterval(S.pt);const q=S.q;S.pt=setInterval(()=>{if(!S||S.q!==q||S.locked||S.mode!=='question'){clearInterval(S&&S.pt);return}
+ const el=Date.now()-S.qStart,lim=Math.max(8000,2*median());
+ if(S.paused===0&&el>lim){S.paused=1;S.hint=true;sig('no response');speak(q.say).then(()=>{if(S&&S.q===q&&!S.locked){startListen()}})}},500)}
+function renderQ(){const q=S.q;let ans='',vis=q.vis||'';
+ if(S.which){ans=`<div class="choiceRow">${S.which.map(v=>`<button class="ans" data-v="${esc(v)}" data-src="which">${esc(labelOf(v))}</button>`).join('')}</div>`;}
+ else if(q.kind==='choice')ans=q.choices.map(c=>`<button class="ans" data-v="${esc(c.v)}">${c.label}</button>`).join('');
+ else if(q.kind==='grid'){vis+=`<div class="cells">${Array.from({length:q.n},(_,i)=>`<div class="cell ${q.st.on.includes(i)?'on':''}" data-cell="${i}"></div>`).join('')}</div>`;ans=`<button class="big go" data-act="done">Done ✔</button>`}
+ else if(q.kind==='pv'){vis+=`<div style="display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap;justify-content:center"><div class="tray" style="flex-direction:column"><div class="drag ${S.selItem==='ten'?'sel':''}" data-item="ten"><div class="rod" style="height:60px"></div>&nbsp;stick (10)</div><div class="drag ${S.selItem==='one'?'sel':''}" data-item="one"><div class="cube"></div>&nbsp;cube (1)</div></div>
+  <div class="zone drop" data-zone="tens"><h3>Tens</h3>${Array.from({length:q.st.tens},()=>'<div class="rod" data-rm="tens"></div>').join('')}</div><div class="zone drop" data-zone="ones"><h3>Ones</h3>${Array.from({length:q.st.ones},()=>'<div class="cube" data-rm="ones" style="width:34px;height:34px"></div>').join('')}</div></div><div class="sub">Tap a block in a box to take it out. Tap the stick or cube again to stop.</div>`;ans=`<button class="big go" data-act="done">Done ✔</button>`}
+ else if(q.kind==='drag'){vis=world({drop:true,placed:q.st.placed,labels:q.hintBold?'initial':'',boldOf:q.hintBold})+`<div class="tray">${q.items.map(it=>`<div class="drag ${S.selItem===it?'sel':''} ${q.st.placed[it]?'used':''}" data-item="${esc(it)}">${esc(it)}</div>`).join('')}</div>`;ans=`<button class="big go" data-act="done">Done ✔</button>`}
+ app().innerHTML=`<div class="qtext">${esc(S.which?S.whichText:q.text)}</div><div class="vis">${vis}</div><div class="answers">${ans}</div>`}
+function labelOf(v){const c=S.q.choices&&S.q.choices.find(c=>c.v===v);return c&&!/</.test(c.label)?c.label:v}
+
+/* ---------- input & grading ---------- */
+function input(v,src){if(!S||S.locked||S.mode!=='question')return;
+ if(src==='which'){S.which=null;return grade(v,'tap')}
+ if(micUsable()&&wantListen&&!S.which){
+  if(S.pend){if(S.pend.src!==src&&String(S.pend.v)!==String(v)){clearTimeout(S.pend.t);const tap=src==='tap'?v:S.pend.v,voi=src==='voice'?v:S.pend.v;S.pend=null;S.which=[String(tap),String(voi)];S.whichText='Which one?';renderQ();speak(`You tapped ${labelOf(tap)}. You said ${labelOf(voi)}. Which one?`).then(()=>{if(S&&!S.locked)startListen()});}
+   return}
+  S.pend={v,src,t:setTimeout(()=>{const p=S.pend;S.pend=null;if(p)grade(p.v,p.src)},900)};return}
+ grade(v,src)}
+function isCorrect(q,v){if(q.kind==='grid')return q.st.on.length===q.target;if(q.kind==='pv')return q.st.tens*10+q.st.ones===q.target;if(q.kind==='drag')return q.items.every(it=>q.st.placed[it]===it);return String(v)===q.answer}
+function given(q,v){if(q.kind==='grid')return q.st.on.length;if(q.kind==='pv')return q.st.tens*10+q.st.ones;return v}
+function grade(v,src){const q=S.q;if(S.locked)return;S.locked=true;stopListen();clearInterval(S.pt);
+ const rt=Date.now()-S.qStart,med=median(),ok=isCorrect(q,v);D.rts.push(rt);if(D.rts.length>60)D.rts.shift();S.total++;
+ const id=q.skill;
+ if(ok){S.correct++;S.wrongRun[id]=0;S.lastDist[id]=null;
+  if(rt<med){S.fastRun++;if(S.fastRun>=2){S.fastRun=0;stepUp(id)}}else S.fastRun=0;
+  if(S.phase!=='preview'&&!S.placement){creditCorrect(id);if(S.phase==='check'&&id===S.newSkill)S.starred=true}
+  if(S.phase==='practice')S.hint=false;
+ }else{S.fastRun=0;
+  const g=Number(given(q,v)),closer=!isNaN(g)&&q.num!=null&&S.lastDist[id]!=null&&Math.abs(g-q.num)<S.lastDist[id];
+  if(!isNaN(g)&&q.num!=null)S.lastDist[id]=Math.abs(g-q.num);
+  S.wrongRun[id]=(S.wrongRun[id]||0)+1;
+  if(rt<1200)sig('very fast answer');
+  if(S.wrongRun[id]>=3&&!closer){sig('3 wrong in a row');S.wrongRun[id]=0}
+  if(S.hint){const s=sk(id);if(s.level>0&&!s.mastered){s.level--;save()}}else S.hint=true;
+  if(S.phase==='warm')reviewMiss(id);
+ }
+ if(S.recover){S.recover.n++;if(ok)S.recover.ok=true;if(S.recover.ok||S.recover.n>=2){S.recover.ev.recovered=S.recover.ok?'yes':'no';S.recover=null;save()}}
+ save();if(S.placement)return placementNext(ok,rt);
+ if(S.mode==='frust'||S.mode==='finish')return;
+ feedback(ok,q)}
+function stepUp(id){const s=sk(id);if(s.level<2){s.level++;save()}else if(S.phase==='practice')S.skipAhead=true}
+function feedback(ok,q){S.mode='feedback';tone(ok);
+ const line=ok?`Correct. ${q.explain}`:`Not yet. ${q.tip} ${q.explain}`;
+ let vis='';if(q.kind==='choice'||q.kind==='map'){vis=q.vis||''}
+ app().innerHTML=`<div class="${ok?'ok':'no'}">${ok?'Correct.':'Not yet.'}</div><div class="sub" style="font-size:34px">${esc(ok?q.explain:q.tip)}</div>${ok?'':`<div class="sub" style="font-size:30px">${esc(q.explain)}</div>`}<div class="vis">${q.kind==='choice'?'':''}</div><div class="answers"><button class="big go" data-act="next">Next ➡</button></div>`;
+ S.lastSay=line;speak(line)}
+
+/* ---------- voice handling ---------- */
+function onSpeech(alts){if(!S||S.mode!=='question'||S.locked)return;const q=S.q;const best=alts[0];const text=(best.t||'').toLowerCase().trim();if(!text)return;
+ if(STOPW.test(text)){sig('said stop words');return}
+ let opts=[];if(S.which)opts=S.which.map(v=>({v,words:[v.toLowerCase()]}));else if(q.kind==='choice')opts=q.choices.map(c=>({v:c.v,words:[c.v.toLowerCase()].concat(/^[a-z]+$/i.test(c.v)?[]:[])}));else if(q.kind==='map')opts=q.voice.map(n=>({v:n,words:[n.toLowerCase(),n.toLowerCase().split(' ')[0]]}));
+ if(!opts.length){offTopic();return}
+ for(const a of alts){const t=(a.t||'').toLowerCase();const nums=parseNums(t);
+  let m=opts.find(o=>/^\d+$/.test(o.v)&&nums.includes(+o.v));
+  if(!m)m=opts.find(o=>o.words.some(w=>!/^\d+$/.test(w)&&new RegExp('\\b'+w+'\\b').test(t)));
+  if(m){const conf=a.c==null||a.c===0?1:a.c;if(conf<0.5){unclear(t,m.v);return}
+   if(S.which){S.which=null;return grade(m.v,'voice')}return input(m.v,'voice')}}
+ const nums=parseNums(text);if(nums.length){unclear(text,null,nums[0]);return}
+ offTopic()}
+function unclear(t,v,n){const heard=t.split(/\s+/).slice(0,3).join(' ');const tgt=v||n;S.lastSay=v?`I heard "${heard}". Tap ${labelOf(v)} to check.`:`I heard "${heard}". Tap your answer.`;
+ speak(S.lastSay).then(()=>{if(S&&!S.locked)startListen()});if(v){const b=document.querySelector(`.ans[data-v="${CSS.escape(String(v))}"]`);if(b)b.classList.add('hl')}}
+function offTopic(){if(S.offTopicCounted)return;S.offTopicCounted=true;sig('off-topic speech')}
+
+/* ---------- frustration ---------- */
+function sig(type){if(!S||S.placement)return;const now=Date.now();S.sigs.push({t:now,type});S.sigs=S.sigs.filter(s=>now-s.t<60000);
+ if(S.sigs.length>=2&&S.mode!=='frust'&&S.mode!=='break')frustrate(S.sigs.map(s=>s.type))}
+function frustrate(types){stopListen();clearInterval(S.pt);if(S.pend){clearTimeout(S.pend.t);S.pend=null}S.frust++;S.sigs=[];
+ const ev={time:new Date().toISOString(),day:today(),skill:S.q?S.q.skill:S.newSkill,minute:minute(),phase:S.phase,signals:types,action:null,recovered:null};D.events.push(ev);save();S.curEv=ev;
+ if(S.recover){S.recover.ev.recovered='no';S.recover=null}
+ if(S.frust>=2){ev.action='ended session early';ev.recovered='n/a';save();return finish(true)}
+ S.mode='frust';S.q=null;
+ app().innerHTML=`<div class="qtext">We will stop this problem.</div><div class="vis" style="gap:44px"><button class="ans" data-act="fmap" style="min-height:170px">🗺️<br>Map question</button><button class="ans" data-act="fbreak" style="min-height:170px">🌿<br>Break</button><button class="ans" data-act="fsmall" style="min-height:170px">🔹<br>Small problem</button></div>`;
+ S.lastSay='We will stop this problem for now. That is okay. You can pick: a map question, a break, or a small problem.';speak(S.lastSay)}
+function frustChoice(a){const ev=S.curEv;ev.action={fmap:'map question',fbreak:'2-minute break',fsmall:'smaller problem'}[a];S.recover={ev,n:0,ok:false};save();
+ if(a==='fmap'){S.detour=sk('compass').level>0||preOK('compass')?'compass':'lr';return showQ(makeQ())}
+ if(a==='fbreak'){S.afterBreak='newq';return breakScreen(true)}
+ const s=sk(S.newSkill);if(s.level>0&&!s.mastered)s.level--;S.hint=true;save();
+ if(S.phase==='warm'||S.phase==='intro'||S.phase==='preview'){S.phase='practice';S.n=0}showQ(makeQ())}
+function breakScreen(fromFrust){stopListen();if(S.q&&S.mode==='question'&&!S.locked&&!fromFrust){S.afterBreak='resume'}else if(!fromFrust)S.afterBreak=S.afterBreak||'resume';
+ S.prevMode=S.mode;S.mode='break';document.body.classList.add('calm');
+ app().innerHTML=`<div style="height:4vh"></div><div class="qtext">Break time.</div><div class="vis" style="font-size:120px">🌿</div><div class="sub">Stretch your arms up high.</div><div class="sub">Breathe in. Breathe out.</div><div class="answers"><button class="big go" data-act="ready">I am ready</button></div>`;
+ S.lastSay='Break time. Stretch your arms up high. Breathe in slowly. Breathe out slowly.';speak(S.lastSay);
+ clearTimeout(S.bt);S.bt=setTimeout(()=>{if(S&&S.mode==='break')speak('Tap I am ready when you are ready.')},120000)}
+function endBreak(){document.body.classList.remove('calm');clearTimeout(S.bt);const how=S.afterBreak;S.afterBreak=null;
+ if(how==='resume'&&S.q&&!S.locked){S.mode='question';setSteps(S.detour?1:phaseIdx());renderQ();askQ();return}
+ if(S.prevMode==='intro'){return introLine()}
+ if(S.prevMode==='feedback'||S.prevMode==='preview'||how!=='newq'&&S.locked){return advance()}
+ if(S.phase==='preview'||S.phase==='intro'){return advance()}
+ showQ(makeQ())}
+
+/* ---------- finish ---------- */
+function finish(early){stopListen();clearInterval(S.pt);S.mode='finish';setSteps(5);document.body.classList.remove('calm');
+ if(S.recover){S.recover.ev.recovered='no';S.recover=null}
+ const id=S.newSkill,nm=SK[id].name;const recap=early?`Today you worked on ${nm.toLowerCase()}.`:`Today you learned ${nm.toLowerCase()}.`;
+ D.sessions.push({date:today(),start:new Date(S.start).toISOString(),minutes:+((Date.now()-S.start)/60000).toFixed(1),skill:id,correct:S.correct,total:S.total,early,frustrations:S.frust});save();
+ app().innerHTML=`<div class="qtext">${esc(recap)}</div>${S.starred?'<div class="sub">⭐ A star is on your map.</div>':''}${skillMap(id)}<div class="qtext">Session done.</div><div class="answers"><button class="big go" data-act="home">OK</button></div>`;
+ S.lastSay=recap+(S.starred?' A star is on your map.':'')+' Session done.';speak(S.lastSay);chrome(false)}
+function skillMap(hl){const col=a=>Object.keys(SK).filter(id=>SK[id].area===a).map(id=>{const s=sk(id),st=Math.min(2,s.days.length);return `<div class="node ${s.mastered?'m':''} ${preOK(id)?'':'lock'} ${id===hl?'new':''}"><span>${SK[id].icon} ${SK[id].name}</span><span>${'⭐'.repeat(st)}${'☆'.repeat(2-st)}</span></div>`}).join('');
+ return `<div class="map"><div><div class="sub">Math</div>${col('math')}</div><div><div class="sub">Maps</div>${col('geo')}</div></div>`}
+
+/* ---------- placement ---------- */
+const PLACE=[['add20',1],['sub20',0],['pv',1],['compass',0],['continents',1]];
+function placementAsk(){app().innerHTML=`<div class="qtext">Play a short game first?</div><div class="sub">5 quick questions.</div><div class="answers"><button class="big go" data-act="pyes">Yes</button><button class="big" data-act="pskip">Skip</button></div>`;speak('Do you want to play a short game first? 5 quick questions.')}
+function placementStart(){S={placement:true,pi:0,keys:new Set(),sigs:[],wrongRun:{},lastDist:{},fastRun:0,correct:0,total:0,start:Date.now(),phase:'place',n:0,hint:false};chrome(true);setSteps(-1);placementQ()}
+function placementQ(){const [id,L]=PLACE[S.pi];showQ(genQ(id,L,false,S.keys))}
+function placementNext(ok,rt){const [id]=PLACE[S.pi];const s=sk(id);
+ if(ok){s.level=rt<5000?2:1;if(!s.days.includes(today()))s.days.push(today());
+  // passing a placement item also opens its prerequisites
+  SK[id].pre.forEach(p=>{const ps=sk(p);if(!ps.mastered){ps.mastered=true;ps.stage=0;ps.due=addDays(today(),1);ps.days=ps.days.length?ps.days:[today()]}})}
+ else s.level=0;save();S.mode='feedback';tone(ok);
+ app().innerHTML=`<div class="${ok?'ok':'no'}">${ok?'Correct.':'Thank you.'}</div><div class="sub" style="font-size:34px">${esc(S.q.explain)}</div><div class="answers"><button class="big go" data-act="pnext">Next ➡</button></div>`;speak((ok?'Correct. ':'Thank you. ')+S.q.explain)}
+
+/* ================= events ================= */
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act],[data-v],[data-cell],[data-rm]');if(!t)return;
+ const act=t.dataset.act;
+ if(act==='start'){if(!D.placementDone)return placementAsk();return newSession()}
+ if(act==='pyes')return placementStart();
+ if(act==='pskip'){D.placementDone=true;save();return newSession()}
+ if(act==='pnext'){S.pi++;if(S.pi<PLACE.length)return placementQ();D.placementDone=true;save();S=null;return newSession()}
+ if(!S)return;
+ if(act==='next')return advance();
+ if(act==='home')return home();
+ if(act==='repeat'){if(S.lastSay)speak(S.lastSay).then(()=>{if(S&&S.mode==='question'&&!S.locked)startListen()});return}
+ if(act==='break'){if(S.mode==='break'||S.mode==='finish')return;if(S.mode==='question'&&!S.locked&&!S.placement){S.afterBreak='resume';sig('left mid-problem')}if(S.mode==='frust')return;if(S.mode!=='frust')breakScreen(false);return}
+ if(act==='ready')return endBreak();
+ if(act==='fmap'||act==='fbreak'||act==='fsmall')return frustChoice(act);
+ if(act==='done'){return input('done','tap')}
+ if(S.mode!=='question'||S.locked)return;
+ if(t.dataset.v!=null)return input(t.dataset.v,t.dataset.src==='which'?'which':'tap');
+ if(t.dataset.cell!=null){const i=+t.dataset.cell,on=S.q.st.on;const k=on.indexOf(i);if(k>=0)on.splice(k,1);else on.push(i);renderQ();return}
+ if(t.dataset.rm&&!S.selItem){S.q.st[t.dataset.rm]=Math.max(0,S.q.st[t.dataset.rm]-1);renderQ();return}
+});
+/* drag + tap-to-place */
+let drag=null;
+document.addEventListener('pointerdown',e=>{
+ if(S&&S.mode==='question'&&!e.target.closest('button,.reg,.drag,.drop,.cell,[data-rm],#gear')){const now=Date.now();S.offTaps=(S.offTaps||[]).filter(t=>now-t<5000);S.offTaps.push(now);if(S.offTaps.length>=4){S.offTaps=[];sig('off-task taps')}}
+ const d=e.target.closest('.drag');if(!d||!S||S.mode!=='question'||S.locked)return;e.preventDefault();
+ const r=d.getBoundingClientRect();drag={item:d.dataset.item,x0:e.clientX,y0:e.clientY,el:null,dx:e.clientX-r.left,dy:e.clientY-r.top,src:d};});
+document.addEventListener('pointermove',e=>{if(!drag)return;if(!drag.el&&Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)>10){drag.el=drag.src.cloneNode(true);drag.el.classList.add('ghost');document.body.appendChild(drag.el)}
+ if(drag.el){drag.el.style.left=(e.clientX-drag.dx)+'px';drag.el.style.top=(e.clientY-drag.dy)+'px'}});
+document.addEventListener('pointerup',e=>{if(!drag)return;const dd=drag;drag=null;
+ if(!dd.el){S.selItem=S.selItem===dd.item?null:dd.item;renderQ();return}
+ dd.el.remove();const under=document.elementFromPoint(e.clientX,e.clientY);const z=under&&under.closest('.drop');if(z)place(dd.item,z.dataset.zone);else renderQ()});
+document.addEventListener('click',e=>{if(!S||S.mode!=='question'||!S.selItem)return;const z=e.target.closest('.drop');if(z)place(S.selItem,z.dataset.zone)});
+function place(item,zone){const q=S.q;
+ if(q.kind==='pv'){if((item==='ten'&&zone==='tens')||(item==='one'&&zone==='ones'))q.st[zone]++;/* wrong box: snap back, no penalty */}
+ else if(q.kind==='drag'){q.st.placed[item]=zone;S.selItem=null}
+ renderQ()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&S.mode==='question'&&!S.locked)sig('left the page')});
+
+/* ================= parent view ================= */
+let gearT=null;const gear=$('#gear');
+gear.addEventListener('pointerdown',e=>{e.preventDefault();clearTimeout(gearT);gearT=setTimeout(openParent,2000)});
+['pointerup','pointerleave','pointercancel'].forEach(ev=>gear.addEventListener(ev,()=>clearTimeout(gearT)));
+gear.addEventListener('contextmenu',e=>e.preventDefault());
+function weekly(){const now=new Date(today()+'T23:59:59'),wk=7*864e5;const ev=D.events.filter(e=>now-new Date(e.day+'T12:00:00')<wk),prev=D.events.filter(e=>{const d=now-new Date(e.day+'T12:00:00');return d>=wk&&d<2*wk});
+ const trig={};ev.forEach(e=>e.signals.forEach(s=>trig[s]=(trig[s]||0)+1));const help={};ev.forEach(e=>{if(!e.action)return;help[e.action]=help[e.action]||{n:0,y:0};help[e.action].n++;if(e.recovered==='yes')help[e.action].y++});
+ const ses=D.sessions.filter(s=>now-new Date(s.date+'T12:00:00')<wk);
+ return `<p>Sessions this week: <b>${ses.length}</b>. Frustration events: <b>${ev.length}</b> (week before: ${prev.length}). Trend: <b>${ev.length<prev.length?'fewer events':ev.length>prev.length?'more events':'about the same'}</b>.</p>
+ <p>Common triggers: ${Object.keys(trig).length?Object.entries(trig).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${esc(k)} (${v})`).join(', '):'none'}</p>
+ <p>What helped (recovered within 2 questions): ${Object.keys(help).length?Object.entries(help).map(([k,v])=>`${esc(k)}: ${v.y}/${v.n}`).join(', '):'no data yet'}</p>`}
+function openParent(){const p=$('#parent');stopListen();p.style.display='block';const st=D.settings;
+ p.innerHTML=`<button data-p="close" style="float:right;font-size:20px">✕ Close</button><h1>Parent view</h1>
+ <h2>Settings</h2><button data-p="sound">Sound: ${st.sound?'on':'off'}</button><button data-p="mic">Microphone: ${st.mic?'on':'off'}${SR?'':' (not supported in this browser)'}${micDenied?' (blocked by browser)':''}</button>
+ <label style="margin-left:12px">Voice speed <input type="range" min="0.6" max="1.1" step="0.05" value="${st.rate}" data-p="rate"> <span id="rv">${st.rate}</span></label> <button data-p="test">Test voice</button>
+ <h2>Mastery map</h2><p>Mastered = correct on 2 different days. Stars = days with a correct answer.</p>
+ <table><tr><th>Skill</th><th>Level (0-2)</th><th>Correct days</th><th>Mastered</th><th>Next review</th><th>Unlocked</th></tr>${Object.keys(SK).map(id=>{const s=sk(id);return `<tr><td>${SK[id].name}</td><td>${s.level}</td><td>${s.days.join(', ')}</td><td>${s.mastered?'yes':''}</td><td>${s.due||''}</td><td>${preOK(id)?'yes':'no'}</td></tr>`}).join('')}</table>
+ <h2>Weekly summary</h2>${weekly()}
+ <h2>Frustration log</h2>${D.events.length?`<table><tr><th>Time</th><th>Skill</th><th>Minute</th><th>Signals</th><th>Action</th><th>Recovered</th></tr>${D.events.slice().reverse().map(e=>`<tr><td>${new Date(e.time).toLocaleString()}</td><td>${SK[e.skill]?SK[e.skill].name:e.skill}</td><td>${e.minute}</td><td>${esc(e.signals.join(', '))}</td><td>${esc(e.action||'')}</td><td>${e.recovered||'pending'}</td></tr>`).join('')}</table>`:'<p>No events yet.</p>'}
+ <h2>Sessions</h2>${D.sessions.length?`<table><tr><th>Date</th><th>Minutes</th><th>New skill</th><th>Correct</th><th>Ended early</th></tr>${D.sessions.slice(-20).reverse().map(s=>`<tr><td>${s.date}</td><td>${s.minutes}</td><td>${SK[s.skill].name}</td><td>${s.correct}/${s.total}</td><td>${s.early?'yes':''}</td></tr>`).join('')}</table>`:'<p>None yet.</p>'}
+ <h2>Data</h2><button data-p="export">Export log (JSON)</button><button data-p="reset">Reset all data</button>
+ <details style="margin-top:16px"><summary>Testing tools</summary><p>Simulated day offset: ${D.dayOffset} (today counts as ${today()})</p><button data-p="newday">Treat today as a new day</button><button data-p="redo">Show placement game again</button></details>
+ <p style="color:#777;margin-top:20px">Not implemented: voice tone detection. Progress is stored only in this browser.</p>`}
+$('#parent').addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(!b)return;const a=b.dataset.p;
+ if(a==='close'){$('#parent').style.display='none';if(S&&S.mode==='question'&&!S.locked)startListen();return}
+ if(a==='sound')D.settings.sound=!D.settings.sound;if(a==='mic'){D.settings.mic=!D.settings.mic;if(!D.settings.mic)stopListen()}
+ if(a==='test'){speak('Hello. This is my voice.');return}
+ if(a==='export'){const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});const u=URL.createObjectURL(blob),l=document.createElement('a');l.href=u;l.download='tutor-log-'+today()+'.json';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);return}
+ if(a==='reset'){if(!confirm('Delete all progress and logs on this browser?'))return;D=freshD();save();$('#parent').style.display='none';home();return}
+ if(a==='newday'){D.dayOffset=(D.dayOffset||0)+1}
+ if(a==='redo'){D.placementDone=false}
+ save();openParent()});
+$('#parent').addEventListener('input',e=>{if(e.target.dataset.p==='rate'){D.settings.rate=+e.target.value;$('#rv').textContent=D.settings.rate;save()}});
+
+window.__tutor={get S(){return S},get D(){return D}};
+home();
+</script>
+</body>
+</html>
